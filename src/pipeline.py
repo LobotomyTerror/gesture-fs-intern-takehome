@@ -12,9 +12,10 @@ Useful docs:
   - HuggingFace pipelines: https://python.langchain.com/docs/integrations/llms/huggingface_pipelines/
 """
 
+import argparse
 import os
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-from src.knowledge_base import build_knowledge_base
+from knowledge_base import build_knowledge_base
 
 
 # ──────────────────────────────────────────────
@@ -81,7 +82,18 @@ def ask_question(vector_store, llm, question: str) -> dict:
             "sources" -> list[str]: the chunk texts that were retrieved
     """
     # TODO: implement this (~6-8 lines)
-    raise NotImplementedError("TODO 1: Implement ask_question")
+    # raise NotImplementedError("TODO 1: Implement ask_question")
+    similarity_ans = vector_store.similarity_search(question, k=3)
+    context: str = ""
+    text_chunks: list[str] = []
+    for doc in similarity_ans:
+        text_chunks.append(doc.page_content)
+        context += doc.page_content
+
+    return {
+        "answer": llm(PROMPT_TEMPLATE.format(context=context, question=question))[0]["generated_text"],
+        "sources": text_chunks
+    }
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -100,10 +112,25 @@ def main():
          - Calls ask_question() with their input
          - Prints the retrieved sources and the answer
     """
-    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
-
     # TODO: implement this (~10-12 lines)
-    raise NotImplementedError("TODO 2: Complete the interactive loop")
+
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    knowledge_base_vec = build_knowledge_base(data_dir=data_dir)
+
+    while True:
+        question = input("> ")
+
+        if question.lower() == "quit":
+            break
+        if question:
+            answer = ask_question(vector_store=knowledge_base_vec, llm=get_llm(), question=question)
+            print("Sources:")
+            for i, ans in enumerate(answer["sources"]):
+                print(f"\t{i + 1}. {ans}")
+            print(f"\nAnswer: {answer["answer"]}")
+
+
+    # raise NotImplementedError("TODO 2: Complete the interactive loop")
 
 
 if __name__ == "__main__":
