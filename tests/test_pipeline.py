@@ -9,7 +9,7 @@ import pytest
 from transformers import pipeline as hf_pipeline
 
 from src.knowledge_base import build_knowledge_base
-from src.pipeline import ask_question, get_llm
+from src.pipeline import ask_question, get_llm, main
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
@@ -94,4 +94,15 @@ class TestAnswerGeneration:
         answer = result["answer"].lower()
         assert "2,500" in answer or "2500" in answer or "starter" in answer, (
             "Answer should address the pricing question"
+        )
+
+
+# ────────────────────────────────
+# Not Enough Info Response
+# ────────────────────────────────
+class TestInfoResponse:
+    def test_answer_contains_not_enough_info(self, vector_store, llm):
+        result = ask_question(vector_store, llm, "Why is the sky blue?")
+        assert "I don't have enough information to answer that." in result["answer"], (
+            "Answers should be limited if questions are off topic"
         )
