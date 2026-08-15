@@ -12,10 +12,11 @@ Useful docs:
   - HuggingFace pipelines: https://python.langchain.com/docs/integrations/llms/huggingface_pipelines/
 """
 
-import argparse
 import os
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from knowledge_base import build_knowledge_base
+
+from langchain_community.vectorstores import FAISS
 
 
 # ──────────────────────────────────────────────
@@ -59,7 +60,7 @@ Answer:"""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # TODO 1: Implement ask_question
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-def ask_question(vector_store, llm, question: str) -> dict:
+def ask_question(vector_store: FAISS, llm, question: str) -> dict[str, str]:
     """Retrieve relevant chunks and generate an answer.
 
     Steps:
@@ -114,23 +115,29 @@ def main():
     """
     # TODO: implement this (~10-12 lines)
 
-    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
-    knowledge_base_vec = build_knowledge_base(data_dir=data_dir)
-
+    data_dir: str = os.path.join(os.path.dirname(__file__), "..", "data")
+    knowledge_base_vec: FAISS = build_knowledge_base(data_dir=data_dir)
     while True:
-        question = input("> ")
+        question: str = input("> ")
 
         if question.lower() == "quit":
             break
-        if question:
-            answer = ask_question(vector_store=knowledge_base_vec, llm=get_llm(), question=question)
+        if question:  # Checks if input is empty
+            # Input response will split on the CLI command passed in for single-question mode
+            received_input: list[str] | str = question.split("--") if question.endswith("--query") else question
+            if isinstance(received_input, str):
+                answer: dict[str, str] = ask_question(vector_store=knowledge_base_vec, llm=get_llm(), question=received_input)
+            else:
+                answer: dict[str, str] = ask_question(vector_store=knowledge_base_vec, llm=get_llm(), question=received_input[0])
+            
             print("Sources:")
-            for i, ans in enumerate(answer["sources"]):
-                print(f"\t{i + 1}. {ans}")
+            [print(f"  {i + 1}. {source.replace("\n", " - ")}") for i, source in enumerate(answer['sources'])]
             print(f"\nAnswer: {answer["answer"]}")
-
-
-    # raise NotImplementedError("TODO 2: Complete the interactive loop")
+            if isinstance(received_input, list):
+                if "query" in received_input[1]:
+                    break
+        else:
+            print("Please ask a question to retrieve a response (e.g. 'How much does the Growth package cost?')")
 
 
 if __name__ == "__main__":
